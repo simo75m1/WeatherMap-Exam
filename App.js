@@ -5,7 +5,7 @@ import * as Location from 'expo-location'
 
 
 export default function App() {
-
+  const [weather, setWeather] = useState(null)
   const [modalVisible, setModalVisible] = useState(false);
   const [region, setRegion] = useState({
     latitude:40,
@@ -48,11 +48,13 @@ export default function App() {
       }
     }
   }, [])
-
+async function getWeather(){
+  console.log("Fetching weather")
+  //setWeather
+  openModal()
+}
   async function openModal() {
     //Fetch data from weather api
-
-    
 
     setModalVisible(true);
   };
@@ -60,7 +62,6 @@ export default function App() {
   function closeModal() {
     setModalVisible(false);
     saveImage();
-    setImagePath('')
   };
 
 
@@ -71,7 +72,7 @@ export default function App() {
       region={region}
       onLongPress={getWeather}
       ref = {mapView}></MapView>
-    <PopupModal visible={modalVisible} onClose={closeModal}/>
+    <PopupModal visible={modalVisible} onClose={closeModal} weatherData={weather}/>
 
     </View>
   );
@@ -91,11 +92,9 @@ const PopupModal = ({visible, onClose}) => {
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
         <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 10 }}>
           <Text>Add image to this location</Text>
-          <Button title="Add image" onPress={openImageSelector}/>
+          <Button title="Add image"/>
           <Button title="Close" onPress={onClose} />
-          <View style={{ position: 'relative' }}>
-            {imagePath && <Image source={{ uri: imagePath }} style={styles.locationImage} />}
-          </View>
+    
         </View>
       </View>
     </Modal>
@@ -108,5 +107,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  map: {
+    width: '100%',
+    height: '100%'
   },
 });
