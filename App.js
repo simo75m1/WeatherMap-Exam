@@ -48,8 +48,13 @@ export default function App() {
       }
     }
   }, [])
-async function getWeather(){
-  console.log("Fetching weather")
+async function getWeather(data){
+  const {latitude, longitude} = data.nativeEvent.coordinate
+  console.log("Fetching weather from: "+ data.nativeEvent.Location)
+  //Måske brug reverse geocode api call for at få location ud fra koordinater:
+  //https://developers.google.com/maps/documentation/javascript/examples/geocoding-reverse
+  
+  //fetch(http://api.weatherapi.com/v1/current.json?key=f39b8ab4d2ca44b585e110853240905&q=London&aqi=no)
   //setWeather
   openModal()
 }
