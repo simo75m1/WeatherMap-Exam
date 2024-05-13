@@ -6,6 +6,7 @@ import * as Location from 'expo-location'
 
 export default function App() {
   const [weather, setWeather] = useState(null)
+  const [city, setCity] = useState(null)
   const [modalVisible, setModalVisible] = useState(false);
   const [region, setRegion] = useState({
     latitude:40,
@@ -13,7 +14,14 @@ export default function App() {
     latitudeDelta:20, //Hvor mange længde og breddegradder skal vises på kortet
     longitudeDelta:20 //Mindre tal = mere zoomet ind. 
   })
+  const [errorMessageVisible, setErrorMessageVisible] = useState(false);
 
+  const showErrorMessage = () => {
+    setErrorMessageVisible(true);
+    setTimeout(() => {
+      setErrorMessageVisible(false);
+    }, 3000); // Disappear after 3 seconds
+  };
   const mapView = useRef(null) // useRef minder om useState, men forårsager ikke en re-render af siden.
   const locationSubscription = useRef(null)
 
@@ -32,8 +40,8 @@ export default function App() {
           const newRegion = {
           latitude: lokation.coords.latitude,
           longitude: lokation.coords.longitude,
-          latitudeDelta: 20,
-          longitudeDelta: 20
+          latitudeDelta: 75,
+          longitudeDelta: 75
           }
           setRegion(newRegion)
           if(mapView.current){
@@ -48,25 +56,63 @@ export default function App() {
       }
     }
   }, [])
+
+  async function getCity(latitude, longitude) {
+    try {
+      const location = await Location.reverseGeocodeAsync({ latitude, longitude });
+      if (location && location.length > 0) {
+        const { city, region, country } = location[0];
+        return city || region || country;
+      } else {
+        return "City not found";
+      }
+    } catch (error) {
+      console.error("Error getting city:", error);
+      return null;
+    }
+  }
+
+function fetchWeather(city){
+  const tempWeather = fetch(`http://api.weatherapi.com/v1/current.json?key=f39b8ab4d2ca44b585e110853240905&q=${city}&aqi=no`)
+  .then(res => res.json())
+  .then(data => {
+    if(data.current && data.current.temp_c !== undefined){
+      const highestTemp = data.current.temp_c;
+      return highestTemp;
+    } else{
+      return null
+    }
+    
+  })
+  return tempWeather
+}
+
 async function getWeather(data){
   const {latitude, longitude} = data.nativeEvent.coordinate
-  console.log("Fetching weather from: "+ data.nativeEvent.Location)
-  //Måske brug reverse geocode api call for at få location ud fra koordinater:
-  //https://developers.google.com/maps/documentation/javascript/examples/geocoding-reverse
-  
-  //fetch(http://api.weatherapi.com/v1/current.json?key=f39b8ab4d2ca44b585e110853240905&q=London&aqi=no)
-  //setWeather
-  openModal()
+  try {
+    const city = await getCity(latitude, longitude);
+    console.log("Closest city:", city);
+    
+    const weather = await fetchWeather(city);
+    
+    if(weather === null){
+      showErrorMessage()
+    } else{
+      setCity(city);
+      setWeather(weather);
+      openModal()
+    }
+    
+  } catch (error) {
+    console.error("Error:", error);
+  }
 }
   async function openModal() {
-    //Fetch data from weather api
-
     setModalVisible(true);
   };
   
   function closeModal() {
     setModalVisible(false);
-    saveImage();
   };
 
 
@@ -77,27 +123,31 @@ async function getWeather(data){
       region={region}
       onLongPress={getWeather}
       ref = {mapView}></MapView>
-    <PopupModal visible={modalVisible} onClose={closeModal} weatherData={weather}/>
-
+    <PopupModal visible={modalVisible} onClose={closeModal} weatherData={weather} cityData={city}/>
+    {errorMessageVisible && <ErrorMessage />}
     </View>
   );
 }
 
 
-const PopupModal = ({visible, onClose}) => {
+const PopupModal = ({visible, onClose, weatherData, cityData}) => {
 
-  
   return (
     <Modal
       animationType="slide"
       transparent={true}
       visible={visible}
-      onRequestClose={onClose}
-    >
+      onRequestClose={onClose}>
+
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
         <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 10 }}>
-          <Text>Add image to this location</Text>
-          <Button title="Add image"/>
+          <Text>Current City:
+          {cityData}
+          </Text>
+          <Text>Current Weather:
+            {weatherData}
+          </Text>
+          
           <Button title="Close" onPress={onClose} />
     
         </View>
@@ -105,6 +155,15 @@ const PopupModal = ({visible, onClose}) => {
     </Modal>
   );
 };
+
+// Error message component
+const ErrorMessage = () => (
+  <View style={{ position: 'absolute', top: 20, left: 0, right: 0, alignItems: 'center' }}>
+    <Text style={{ backgroundColor: 'white', padding: 10, borderRadius: 5 }}>
+      Could not fetch weather data
+    </Text>
+  </View>
+);
 
 const styles = StyleSheet.create({
   container: {
